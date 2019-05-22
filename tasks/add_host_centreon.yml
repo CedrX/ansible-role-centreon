@@ -1,0 +1,57 @@
+---
+- name: Recuperation du token
+  no_log: True
+  uri:
+    url: "{{ cent_host }}/api/index.php?action=authenticate"
+    method: POST
+    body: "username={{ cent_username }}&password={{ cent_password }}"
+  register: json_result
+  delegate_to: localhost
+
+- name: show Token
+  debug:
+    msg: "Le Token: {{ json_result.json.authToken }}"
+    verbosity: 3
+
+- name: set fact for hostname
+  set_fact:
+    hostName: "{{ ansible_host.split('.')[0] }}"
+
+- name: set fact for ip address
+  set_fact:
+    hostIpAddr: "{{ lookup( 'dig', ansible_host) }}"
+
+- name: debug facts
+  debug:
+    msg: "Host : {{ hostName }},  IP: {{ hostIpAddr }}"
+
+
+- name: Ajout du Host dans centreon
+  uri:
+    url: "{{ cent_host }}/api/index.php?action=action&object=centreon_clapi"
+    method: POST
+    body_format: json
+    headers:
+      Content-Type: "application/json"
+      centreon-auth-token: "{{ json_result.json.authToken }}"
+    body: '{"action": "add", "object": "host","values": "{{ hostName }};{{ hostName | lower }};{{ hostIpAddr }};{{ cent_template }};central;{{ cent_hostgroup }}"}'
+  register: json_result_post
+  delegate_to: localhost
+
+
+- name: show result
+  debug:
+    msg: "Result post: {{ json_result_post }}"
+    verbosity: 2
+
+- name: Appliquer le template
+  uri:
+    url: "{{ cent_host }}/api/index.php?action=action&object=centreon_clapi"
+    method: POST
+    body_format: json
+    headers:
+      Content-Type: "application/json"
+      centreon-auth-token: "{{ json_result.json.authToken }}"
+    body: '{"action": "applytpl", "object": "host","values": "{{ hostName }}"}'
+  delegate_to: localhost
+

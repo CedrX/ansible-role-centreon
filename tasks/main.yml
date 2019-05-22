@@ -1,0 +1,9 @@
+---
+- name: Ajout du Host dans centreon
+  include_tasks: add_host_centreon.yml
+  when: "tache == 'add_host'"
+
+
+- name: Suppression du Host dans centreon
+  include_tasks: remove_host_centreon.yml
+  when: "tache == 'remove_host'"
